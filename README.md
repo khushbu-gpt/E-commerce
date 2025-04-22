@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Express.js and TypeScript Quickstart Template
 
 Welcome to the **Express.js and TypeScript Quickstart Template**! This repository provides a clean, scalable, and production-ready boilerplate for building web applications using **Express.js** and **TypeScript**.
@@ -174,3 +175,9 @@ This project is licensed under the [MIT License](LICENSE).
 
 For more templates and tutorials, check out my YouTube channel: [Asaan Hai Coding](https://www.youtube.com/@asaan_hai_coding).
 
+=======
+# E-commerce
+This is an E-commerce repository.
+<br>
+Project Uploaded to github
+>>>>>>> dc6fecc5f2144ee568528707fc834602c47f5b2e
