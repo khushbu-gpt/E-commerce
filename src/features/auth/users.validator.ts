@@ -11,18 +11,26 @@ const password=z.string().min(6, "Password must be at least 6 characters").max(1
 export const registerValidationSchema = z.object({
   email,password,
   firstname:z.string().min(3, "Minimum 3 characters is required").max(10),
-  lastname:z.string().min(3, "Minimum 3 characters is required").max(12),
-  phone: string("contact").min(10, "Invalid contact number").max(13),
-  dob: string("dob"),
+  lastname:z.string().min(3, "Minimum 3 characters is required").max(12).optional(),
+  phone: z.string().min(10, "Invalid contact number").max(13),
+  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format, expected YYYY-MM-DD"),
 });
 
+export const updateUserZodSchema=z.object({
+  email:email.optional(),
+  password:password.optional(),
+  firstname:z.string().min(3, "Minimum 3 characters is required").max(10).optional(),
+  lastname:z.string().min(3, "Minimum 3 characters is required").max(12).optional(),
+  phone:z.string().min(10, "Invalid contact number").max(13).optional(),
+  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format, expected YYYY-MM-DD").optional(),
+})
 
 export const loginValidationZodSchema=z.object({email,password})
-export const resetPasswordZodSchema=z.object({email,password})
+export const resetPasswordZodSchema=z.object({email,newpassword:password})
 export const forgotPasswordZodSchema=z.object({email})
 export const verifyForgetPasswordZodSchema=z.object({email,otp:z.string().length(6),new_password:password})
 
-
+export type UpdateUserZodType=z.infer<typeof updateUserZodSchema>
 export type RegisterInputZodType=z.infer<typeof registerValidationSchema>
 export type LoginInputZodType=z.infer<typeof loginValidationZodSchema>
 export type ResetPasswordZodType=z.infer<typeof resetPasswordZodSchema>

@@ -17,11 +17,11 @@ export type TokenPayload = {
 };
 export interface UserBase extends Document {
   firstname: string;
-  lastname: string;
+  lastname?: string;
   email: string;
   phone: number;
-  gender: GENDER;
-  dob: string;
+  gender?: GENDER;
+  dob?: string;
   role: ROLE;
   password: string;
 }

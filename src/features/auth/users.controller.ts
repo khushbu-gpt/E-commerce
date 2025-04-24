@@ -1,10 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { userModel } from "./users.model";
-import { hashPassword, verifyPassword } from "@/utils/hashing";
 import { SendResponse } from "@/utils/SendRespone";
 import AppError from "@/utils/AppError";
-import { generateLoginTokens } from "@/utils/jwt";
-
+import * as userService from "@/features/auth/users.service"
 export const getAllUserController = async (
   req: Request,
   res: Response,
@@ -32,15 +30,7 @@ export const registerUserController = async (
   next: NextFunction
 ) => {
   try {
-    const { firstname, lastname, email, password, phone, dob } = req.body;
-    const user = await userModel.create({
-      firstname,
-      lastname,
-      email,
-      password,
-      phone,
-      dob,
-    });
+    const user = await userService.registerUserService(req.body);
     SendResponse(res, {
       status_code: 201,
       message: "User Registered Successfully",
@@ -58,24 +48,9 @@ export const loginUserController = async (
   next: NextFunction
 ) => {
   try {
-    const { email, password } = req.body;
-    const user = await userModel.findOne({ email }).lean();
-   
-    if (!user) throw new AppError("Invalid Email or Password", 401);
-
-    const isValidPassword = await verifyPassword(password, user.password);
-    console.debug("3", isValidPassword);
-
-    if (!isValidPassword) throw new AppError("Invalid Password", 401);
-
-    const token = generateLoginTokens({
-      uid: user._id.toString(),
-      email: user.email,
-      role: user.role,
-    });
-    if (!token) throw new AppError("Token Genrated Error", 401);
-    const { password: _password, ...userWithoutPassword } = user;
-    res.cookie("refreshtoken", token.refreshToken, {
+    const payload=req.body
+    const {user,tokens}= await userService.LoginUserService(payload);
+    res.cookie("refreshtoken", tokens.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -83,7 +58,7 @@ export const loginUserController = async (
     SendResponse(res, {
       status_code: 200,
       message: "User Login Successfully",
-      data: { ...userWithoutPassword, accesToken: token.accessToken },
+      data: { ...user, accesToken: tokens.accessToken },
     });
   } catch (error) {
     console.error(error);
@@ -97,18 +72,12 @@ export const resetPasswordController = async (
   next: NextFunction
 ) => {
   try {
-    const { email, password } = req.body;
-    const hasedPassword = await hashPassword(password);
-    const user = await userModel.updateOne(
-      { email },
-      { $set: { password: hasedPassword } }
-    );
-    if (!user.matchedCount) throw new AppError("User Not Found", 404);
-
+    const { email, newpassword } = req.body;
+    const result = await userService.resetPasswordService({email, newpassword});
     SendResponse(res, {
       status_code: 200,
-      message: " Reset Password Successfully",
-      data: user,
+      message: result.message,
+
     });
   } catch (error) {
     console.error(error);
@@ -120,52 +89,13 @@ export const updateUserController = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
-  try {
-    const {
-      firstname,
-      lastname,
-      phone,
-      dob,
-      new_lastname,
-      new_phone,
-      new_firstname,
-      new_dob,
-    } = req.body;
-    if (
-      !firstname ||
-      !phone ||
-      !lastname ||
-      !dob ||
-      !new_firstname ||
-      !new_phone ||
-      !new_lastname ||
-      !new_dob
-    ) {
-      throw new AppError("All fields  are required.", 400);
-    }
-
-    const updatedUser = await userModel.updateMany(
-      { firstname, lastname, phone, dob },
-      [
-        {
-          $set: {
-            firstname: new_firstname,
-            lastnamet: new_lastname,
-            phone: new_phone,
-            dob: new_dob,
-          },
-        },
-        {},
-      ]
-    );
-
-    if (!updatedUser.matchedCount) throw new AppError("No user updated", 404);
-
-    console.log(updatedUser);
+) =>{
+   try{
+    const payload=req.body
+    const updatedUser=userService.updateUserService(payload)
     SendResponse(res, {
       message: "Users updated successfully",
-      data: updatedUser.modifiedCount,
+      data: updatedUser
     });
   } catch (error) {
     console.error(error);

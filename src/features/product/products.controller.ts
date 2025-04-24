@@ -3,11 +3,14 @@ import { productModel } from "./products.model";
 import AppError from "@/utils/AppError";
 import { SendResponse } from "@/utils/SendRespone";
 import { MongooseError } from "mongoose";
+import * as ProductService from "./products.services";
+
 import {
   addProductListZodType,
   addProductZodType,
   deleteProductZodType,
   fetchProductListZodType,
+  fetchProductZodType,
   updateProductZodType,
 } from "@/features/product/products.validator";
 
@@ -17,20 +20,11 @@ export const addProductController = async (
   next: NextFunction
 ) => {
   try {
-    const { title, price, mrp, description, sku, images, variants } =
-      req.body as addProductZodType;
-    const newproduct = await productModel.create({
-      title,
-      price,
-      mrp,
-      description,
-      sku,
-      images,
-      variants,
-    });
+    const newproduct = await ProductService.addproductService(req.body);
+    console.log(newproduct);
     SendResponse(res, {
       message: "Product added successfully",
-      meta: { id: newproduct.sku },
+      meta: { id: newproduct._id },
       data: newproduct,
       status_code: 201,
     });
@@ -76,9 +70,9 @@ export const fetchProductController = async (
   next: NextFunction
 ) => {
   try {
-    const { sku } = req.params;
-    const products = await productModel.findOne({ sku }).lean();
-    if (!products) throw new AppError("product not found!", 404);
+    const products = await ProductService.getProductService(
+      req.params as fetchProductZodType
+    );
     SendResponse(res, {
       message: "product retrieved  successfully",
       data: products,
@@ -98,25 +92,15 @@ export const fetchProductListController = async (
   next: NextFunction
 ) => {
   try {
-    const products = req.query as unknown as fetchProductListZodType;
-    const limit = Number(req.query.limit);
-    const page = Number(req.query.page);
-    const skip = (page - 1) * limit;
-    const AllProduct = await productModel
-      .find({})
-      .select({
-        sku: true,
-        title: true,
-        price: true,
-        stock: true,
-        images: true,
-      })
-      .limit(limit)
-      .skip(skip)
-      .lean();
+    const { limit, page } = req.query as unknown as fetchProductListZodType;
+    const products = await ProductService.getProductListService({
+      limit,
+      page,
+    });
+    console.log(products);
     SendResponse(res, {
       message: "product retrieved  successfully",
-      data: AllProduct,
+      data: products,
       status_code: 200,
     });
   } catch (error) {
@@ -133,11 +117,10 @@ export const deleteProductById = async (
   next: NextFunction
 ) => {
   try {
-    const { sku } = req.params as deleteProductZodType;
-    const deletedProduct = await productModel.deleteOne({ sku });
-    if (!deletedProduct.deletedCount) {
-      return next(new AppError("product not found", 404));
-    }
+    const deletedProduct = await ProductService.deleteProductService(
+      req.params as deleteProductZodType
+    );
+    console.log(deletedProduct);
     SendResponse(res, {
       message: "product deleted successfully",
       data: deletedProduct,
@@ -151,17 +134,6 @@ export const deleteProductById = async (
   }
 };
 
-export const validateVariantsToAdd = (
-  existingVariants: { color: string; url: string }[],
-  newVariants: { color: string; url: string }[]
-) => {
-  const existingColors = new Set(existingVariants.map((v) => v.color));
-  return existingVariants.length
-    ? newVariants
-        .filter((v) => v.color?.trim() && v.url?.trim())
-        .filter((v) => !existingColors.has(v.color))
-    : newVariants;
-};
 
 export const updateProductController = async (
   req: Request,
@@ -171,95 +143,7 @@ export const updateProductController = async (
   try {
     const body = req.body as updateProductZodType;
 
-    const {
-      title,
-      category,
-      price,
-      mrp,
-      description,
-      rating,
-      stock,
-      addImages,
-      removeImages,
-      addVariants,
-      removeVariants,
-      updateImageOfVariant,
-      sku,
-    } = body;
-
-    const product = await productModel
-      .findOne({ sku })
-      .select({ variants: 1, _id: 0 })
-      .lean();
-
-    if (!product) {
-      return next(new AppError("Product not found", 404));
-    }
-
-    // Validate new variants to be added
-    const validVariantsToAdd = validateVariantsToAdd(
-      product.variants || [],
-      addVariants || []
-    );
-
-    // Start building MongoDB update query
-    const updateQuery: any = {
-      $set: {
-        ...(title && { title }),
-        ...(category && { category }),
-        ...(price && { price }),
-        ...(mrp && { mrp }),
-        ...(description && { description }),
-        ...(rating && { rating }),
-      },
-    };
-
-    if (stock) {
-      updateQuery.$inc = { stock };
-    }
-
-    if (addImages?.length) {
-      updateQuery.$addToSet = {
-        ...(updateQuery.$addToSet || {}),
-        images: { $each: addImages },
-      };
-    }
-
-    if (removeImages?.length) {
-      updateQuery.$pull = {
-        ...(updateQuery.$pull || {}),
-        images: { $in: removeImages },
-      };
-    }
-
-    if (removeVariants?.length) {
-      updateQuery.$pull = {
-        ...(updateQuery.$pull || {}),
-        variants: { color: { $in: removeVariants } },
-      };
-    }
-
-    if (validVariantsToAdd?.length) {
-      updateQuery.$addToSet = {
-        ...(updateQuery.$addToSet || {}),
-        variants: { $each: validVariantsToAdd },
-      };
-    }
-
-    if (updateImageOfVariant) {
-      updateQuery.$set["variants.$[elem].url"] = updateImageOfVariant.url;
-    }
-
-    const updatedProduct = await productModel.findOneAndUpdate(
-      { sku },
-      updateQuery,
-      {
-        new: true,
-        arrayFilters: updateImageOfVariant
-          ? [{ "elem.color": updateImageOfVariant.color }]
-          : [],
-      }
-    );
+   const updatedProduct=await ProductService.updateProductService(body)
 
     SendResponse(res, {
       message: "Product updated successfully",

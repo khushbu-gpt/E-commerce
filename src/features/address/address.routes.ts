@@ -14,7 +14,6 @@ import {
   getAddressByUidQuerySchema,
   updateAddressByIdSchema,
 } from "./address.validator";
-import { verifyTokenMiddleware } from "@/middlewares/verifyAccessToken";
 
 const addressRouter = Router();
 

@@ -1,10 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { addressModel } from "./address.model";
 import { SendResponse } from "@/utils/SendRespone";
 import AppError from "@/utils/AppError";
-import { Types } from "mongoose";
-import { userModel } from "../auth/users.model";
-import { getAddressByUidQuerySchema } from "./address.validator";
+import { addAddressService, deleteAddressService, getAddressByIdService, getAllAddressService, updateAddressService } from "./address.service";
 
 export const getAddressControllerById = async (
   req: Request,
@@ -13,10 +10,7 @@ export const getAddressControllerById = async (
 ) => {
   try {
     const { id } = req.params;
-    if (!Types.ObjectId.isValid(id))
-      throw new AppError("Invalid Address ID", 400);
-    const data = await addressModel.findById(id).lean();
-    if (!data) throw new AppError("data not found", 404);
+   const data=await getAddressByIdService(id)
     SendResponse(res, {
       data,
       message: "Address fetched successfully",
@@ -33,19 +27,13 @@ export const addAddressController = async (
   next: NextFunction
 ) => {
   try {
-    const payload = req.body;
-    if (!Types.ObjectId.isValid(payload.uid))
-      throw next(new AppError("Invalid user Id", 401));
-    const user = await userModel.exists({ _id: payload.uid });
-    if (!user) return next(new AppError("user  not exist", 404));
-    const Address = await addressModel.create(payload);
+    const Address = await addAddressService(req.body)
     SendResponse(res, {
       data: Address,
       message: "Address added successfully",
       status_code: 201,
     });
   } catch (error) {
-    console.error(error);
     next(new AppError("address failed", 500));
   }
 };
@@ -56,17 +44,9 @@ export const getAllAddressController = async (
   next: NextFunction
 ) => {
   try {
-    const limit = Math.max(Math.min(Number(req.query.limit) || 6, 10), 1);
+      const limit = Math.max(Math.min(Number(req.query.limit) || 6, 10), 1);
     const page = Math.max(Number(req.query.page) || 1, 1);
-    // if (!Types.ObjectId.isValid(uid))
-    //   throw next(new AppError("Invalid user Id", 401));
-    const data = await addressModel
-      .find({})
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
-    if (!data.length) throw new AppError("Address  not found", 404);
-
+    const data = await getAllAddressService(page,limit)
     SendResponse(res, {
       data,
       message: "Address fetched successfully",
@@ -83,16 +63,9 @@ export const updateAddressController = async (
   next: NextFunction
 ) => {
   try {
-    const { payload } = req.body;
-    const { id } = req.params;
-    if (!Types.ObjectId.isValid(id))
-      throw next(new AppError("Invalid Address Id", 401));
-    const data = await addressModel
-      .findByIdAndUpdate({ id }, { $set: payload }, { new: true })
-      .lean();
-    if (!data) return next(new AppError("Address not found", 404));
+   const data=await updateAddressService(req.params.id,req.body)
     SendResponse(res, {
-      data: data,
+      data,
       message: "Address updated successfully",
       status_code: 201,
     });
@@ -108,13 +81,10 @@ export const deleteAddressByID = async (
   next: NextFunction
 ) => {
   try {
-    const { id } = req.params;
-    if (!Types.ObjectId.isValid(id))
-      throw next(new AppError("Invalid Address Id", 401));
-    const data = await addressModel.findByIdAndDelete({ id }).lean();
-    if (!data) return next(new AppError("Address not found", 404));
+
+   const data=await deleteAddressService(req.params.id)
     SendResponse(res, {
-      data: data,
+      data,
       message: "Address Deleted successfully",
       status_code: 201,
     });
